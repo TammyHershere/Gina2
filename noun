@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>單字選擇井字遊戲</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8;
+            user-select: none;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.5rem;
+        }
+        .container {
+            max-width: 18rem; /* 再次縮小容器寬度 */
+            width: 100%;
+            padding: 0.75rem; /* 減少內距 */
+            background-color: #ffffff;
+            border-radius: 1rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .game-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-gap: 0.2rem; /* 減少間距 */
+            width: 100%;
+            aspect-ratio: 1 / 1;
+        }
+        .cell {
+            background-color: #f3f4f6;
+            border-radius: 0.4rem; /* 減少圓角 */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #334155;
+            transition: all 0.2s ease-in-out;
+            cursor: pointer;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            padding: 0.2rem; /* 減少內距 */
+            text-align: center;
+        }
+        .cell-word {
+            font-size: 0.6rem; /* 大幅縮小字體 */
+            font-weight: 500;
+            color: #94a3b8;
+            line-height: 1.2;
+        }
+        .cell-content {
+            font-weight: 600;
+            font-size: 1.1rem; /* 大幅縮小字體 */
+        }
+        .cell:hover:not(.occupied) {
+            transform: translateY(-2px);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .occupied {
+            cursor: not-allowed;
+            background-color: #e2e8f0;
+        }
+        .cell.x-marker .cell-content {
+            color: #ef4444; /* red-500 */
+        }
+        .cell.o-marker .cell-content {
+            color: #3b82f6; /* blue-500 */
+        }
+        .win-line {
+            position: absolute;
+            background-color: #22c55e;
+            z-index: 10;
+        }
+        .styled-button {
+            padding: 0.5rem 1rem;
+            background-color: #2563eb;
+            color: white;
+            border-radius: 9999px;
+            font-weight: 600;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: background-color 0.2s, box-shadow 0.2s;
+            border: none;
+            cursor: pointer;
+            font-size: 0.875rem;
+        }
+        .styled-button:hover {
+            background-color: #1d4ed8;
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+        }
+        .option-button {
+            padding: 0.4rem 0.6rem; /* 進一步減少按鈕內距 */
+            background-color: #fff;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            text-align: center;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            transition: background-color 0.2s;
+            font-size: 0.75rem; /* 進一步縮小按鈕字體 */
+        }
+        .option-button:hover {
+            background-color: #f3f4f6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-xl font-bold text-gray-800 mb-2">單字選擇井字遊戲</h1>
+        <p id="game-info" class="text-gray-600 text-sm mb-3 text-center">你的回合：X</p>
+        
+        <div class="relative w-full" style="padding-bottom: 100%;">
+            <div id="game-board" class="absolute inset-0 game-grid">
+                <!-- 方塊將在此生成 -->
+            </div>
+            <div id="win-message" class="absolute inset-0 bg-white/80 backdrop-blur-sm rounded-2xl hidden flex-col items-center justify-center z-20">
+                <h2 id="win-text" class="text-xl font-bold mb-3 text-center"></h2>
+                <button id="reset-btn" class="styled-button">重新開始</button>
+            </div>
+        </div>
+
+        <div id="word-challenge" class="mt-3 w-full flex-col items-center">
+            <div class="p-2 bg-yellow-50 text-yellow-800 rounded-lg border border-yellow-200 w-full">
+                <p id="word-prompt" class="font-semibold text-sm text-center mb-2"></p>
+                <div id="options-container" class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <!-- 選項將在此生成 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const words = {
+            "volume": ["體積；容量", "音量", "書籍"],
+            "project": ["計畫；專案", "投影", "目標"],
+            "cereal": ["穀物；麥片", "系列", "嚴肅的"],
+            "insurance": ["保險", "保證", "不確定性"],
+            "course": ["課程", "粗糙的", "路徑"],
+            "account": ["帳戶；報告", "計算", "敘述"],
+            "monument": ["紀念碑", "時刻", "運動"],
+            "jail": ["監獄", "郵件", "果醬"],
+            "fable": ["寓言", "故事", "虛構的"],
+            "glacier": ["冰河", "冰淇淋", "玻璃"],
+            "description": ["描述", "訂閱", "破壞"],
+            "operation": ["操作；運作", "意見", "開放"],
+            "executive": ["主管", "執行", "例外"],
+            "category": ["類別", "目錄", "慶祝"],
+            "excerpt": ["摘錄", "排除", "運動"]
+        };
+        
+        const wordList = Object.keys(words);
+        let board = ['', '', '', '', '', '', '', '', ''];
+        let currentPlayer = 'X';
+        let isGameActive = true;
+        let isPlayerTurn = true;
+        const gameInfo = document.getElementById('game-info');
+        const gameBoard = document.getElementById('game-board');
+        const winMessage = document.getElementById('win-message');
+        const winText = document.getElementById('win-text');
+        const resetBtn = document.getElementById('reset-btn');
+        const wordChallenge = document.getElementById('word-challenge');
+        const wordPrompt = document.getElementById('word-prompt');
+        const optionsContainer = document.getElementById('options-container');
+        let currentCellIndex = -1;
+
+        // Shuffle array function
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        function createBoard() {
+            gameBoard.innerHTML = '';
+            board.fill('');
+            shuffle(wordList);
+            
+            for (let i = 0; i < 9; i++) {
+                const cell = document.createElement('div');
+                cell.classList.add('cell');
+                cell.dataset.index = i;
+                
+                const wordContent = document.createElement('div');
+                wordContent.classList.add('cell-word');
+                wordContent.textContent = wordList[i].toUpperCase();
+                cell.appendChild(wordContent);
+
+                const playerMarker = document.createElement('div');
+                playerMarker.classList.add('cell-content', 'hidden');
+                cell.appendChild(playerMarker);
+
+                cell.addEventListener('click', handleCellClick);
+                gameBoard.appendChild(cell);
+            }
+            updateGameInfo();
+            // 在每次創建新遊戲盤時，自動為玩家顯示第一個題目
+            if (isPlayerTurn) {
+                showQuestionForFirstMove();
+            }
+        }
+        
+        function showQuestionForFirstMove() {
+            // 隨機選擇一個未被佔據的格子來當作第一個題目
+            const availableCells = [...gameBoard.children].filter(cell => !cell.classList.contains('occupied'));
+            if (availableCells.length > 0) {
+                const randomCell = availableCells[Math.floor(Math.random() * availableCells.length)];
+                currentCellIndex = parseInt(randomCell.dataset.index);
+                const word = wordList[currentCellIndex];
+                const options = words[word];
+                
+                wordChallenge.classList.remove('hidden');
+                wordPrompt.textContent = `請選擇正確的中文解釋：${word.toUpperCase()}`;
+                optionsContainer.innerHTML = '';
+                
+                shuffle(options);
+                options.forEach(option => {
+                    const button = document.createElement('button');
+                    button.classList.add('option-button');
+                    button.textContent = option;
+                    button.addEventListener('click', () => checkAnswer(option, word));
+                    optionsContainer.appendChild(button);
+                });
+            }
+        }
+
+        function handleCellClick(e) {
+            const cell = e.target.closest('.cell');
+            if (!cell || !isGameActive || !isPlayerTurn || cell.classList.contains('occupied')) {
+                return;
+            }
+
+            currentCellIndex = parseInt(cell.dataset.index);
+            const word = wordList[currentCellIndex];
+            const options = words[word];
+            
+            wordChallenge.classList.remove('hidden');
+            wordPrompt.textContent = `請選擇正確的中文解釋：${word.toUpperCase()}`;
+            optionsContainer.innerHTML = '';
+            
+            shuffle(options);
+            options.forEach(option => {
+                const button = document.createElement('button');
+                button.classList.add('option-button');
+                button.textContent = option;
+                button.addEventListener('click', () => checkAnswer(option, word));
+                optionsContainer.appendChild(button);
+            });
+        }
+
+        function checkAnswer(selectedOption, word) {
+            const correctMeaning = words[word][0];
+            if (selectedOption === correctMeaning) {
+                handlePlayerMove(currentCellIndex);
+                wordChallenge.classList.add('hidden');
+            } else {
+                // 如果答案錯誤，不做任何動作，讓玩家繼續選擇
+            }
+        }
+
+        function handlePlayerMove(index) {
+            const cell = gameBoard.children[index];
+            board[index] = currentPlayer;
+            cell.classList.add('occupied', `${currentPlayer.toLowerCase()}-marker`);
+            cell.querySelector('.cell-content').textContent = currentPlayer;
+            cell.querySelector('.cell-content').classList.remove('hidden');
+            cell.querySelector('.cell-word').classList.add('hidden');
+
+            const winner = checkWinner();
+            if (winner) {
+                endGame(winner);
+            } else if (!board.includes('')) {
+                endGame('draw');
+            } else {
+                currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+                isPlayerTurn = !isPlayerTurn;
+                updateGameInfo();
+                if (!isPlayerTurn) {
+                    setTimeout(computerMove, 1000);
+                }
+            }
+        }
+        
+        function updateGameInfo() {
+            gameInfo.textContent = isPlayerTurn ? '你的回合：X' : '電腦的回合：O';
+        }
+
+        function computerMove() {
+            if (!isGameActive) return;
+            const availableCells = board.map((cell, index) => cell === '' ? index : null).filter(val => val !== null);
+            if (availableCells.length > 0) {
+                const randomIndex = Math.floor(Math.random() * availableCells.length);
+                const move = availableCells[randomIndex];
+                // 電腦不會答錯，直接移動
+                handlePlayerMove(move);
+            }
+        }
+
+        function checkWinner() {
+            const winConditions = [
+                [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
+                [0, 3, 6], [1, 4, 7], [2, 5, 8], // Columns
+                [0, 4, 8], [2, 4, 6]            // Diagonals
+            ];
+
+            for (let i = 0; i < winConditions.length; i++) {
+                const [a, b, c] = winConditions[i];
+                if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+                    drawWinLine(i);
+                    return board[a];
+                }
+            }
+            return null;
+        }
+        
+        function drawWinLine(conditionIndex) {
+            const winConditions = [
+                [0, 1, 2], [3, 4, 5], [6, 7, 8],
+                [0, 3, 6], [1, 4, 7], [2, 5, 8],
+                [0, 4, 8], [2, 4, 6]
+            ];
+            const [a, b, c] = winConditions[conditionIndex];
+            
+            const winLine = document.createElement('div');
+            winLine.classList.add('win-line');
+
+            const gameBoardRect = gameBoard.getBoundingClientRect();
+            winLine.style.transformOrigin = 'center center';
+            if (conditionIndex === 6) {
+                const angle = 45;
+                const length = Math.sqrt(Math.pow(gameBoardRect.width, 2) + Math.pow(gameBoardRect.height, 2)) * 0.95; 
+                winLine.style.width = `${length}px`;
+                winLine.style.transform = `rotate(${angle}deg)`;
+                winLine.style.top = `50%`;
+                winLine.style.left = `50%`;
+            } else if (conditionIndex === 7) {
+                const angle = -45;
+                const length = Math.sqrt(Math.pow(gameBoardRect.width, 2) + Math.pow(gameBoardRect.height, 2)) * 0.95;
+                winLine.style.width = `${length}px`;
+                winLine.style.transform = `rotate(${angle}deg)`;
+                winLine.style.top = `50%`;
+                winLine.style.left = `50%`;
+            } else {
+                const cellA = gameBoard.children[a].getBoundingClientRect();
+                const cellC = gameBoard.children[c].getBoundingClientRect();
+                const startX = cellA.left + cellA.width / 2;
+                const startY = cellA.top + cellA.height / 2;
+                const endX = cellC.left + cellC.width / 2;
+                const endY = cellC.top + cellC.height / 2;
+                const length = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2));
+                const angle = Math.atan2(endY - startY, endX - startX) * 180 / Math.PI;
+                winLine.style.width = `${length}px`;
+                winLine.style.transform = `rotate(${angle}deg)`;
+                winLine.style.top = `${startY - gameBoardRect.top}px`;
+                winLine.style.left = `${startX - gameBoardRect.left}px`;
+            }
+            gameBoard.appendChild(winLine);
+        }
+
+        function endGame(winner) {
+            isGameActive = false;
+            winMessage.classList.remove('hidden');
+            if (winner === 'draw') {
+                winText.textContent = '平手！';
+                winText.classList.add('text-gray-700');
+            } else {
+                winText.textContent = `${winner} 獲勝！`;
+                winText.classList.add(winner === 'X' ? 'text-red-500' : 'text-blue-500');
+            }
+        }
+
+        resetBtn.addEventListener('click', () => {
+            winMessage.classList.add('hidden');
+            winText.classList.remove('text-red-500', 'text-blue-500', 'text-gray-700');
+            wordChallenge.classList.add('hidden');
+            isGameActive = true;
+            isPlayerTurn = true;
+            currentPlayer = 'X';
+            createBoard();
+        });
+
+        createBoard();
+    </script>
+</body>
+</html>
