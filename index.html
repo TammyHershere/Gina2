@@ -1,55 +1,261 @@
-import random
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>英文選中文 — 名詞小遊戲</title>
+  <style>
+    :root{
+      --bg:#f6f8fb;
+      --card:#ffffff;
+      --accent:#2b7cff;
+      --ok:#2ecc71;
+      --bad:#e74c3c;
+      --muted:#6b7280;
+    }
+    html,body{height:100%;}
+    body{
+      margin:0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", "Helvetica Neue", Arial;
+      background:linear-gradient(180deg,var(--bg),#eef2fb);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:24px;
+    }
+    .wrap{
+      width:100%;
+      max-width:720px;
+      background:var(--card);
+      border-radius:12px;
+      box-shadow:0 8px 30px rgba(20,30,60,0.08);
+      padding:24px;
+    }
+    h1{margin:0 0 8px;font-size:20px;}
+    p.desc{margin:0 0 16px;color:var(--muted);}
+    .top-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+    .score, .progress{font-weight:600;color:var(--muted);}
+    .card{
+      background:#fbfdff;
+      border-radius:10px;
+      padding:20px;
+      margin-bottom:16px;
+      border:1px solid rgba(43,124,255,0.06);
+    }
+    .word{
+      font-size:34px;
+      font-weight:700;
+      letter-spacing:0.6px;
+      margin-bottom:8px;
+    }
+    .hint{color:var(--muted);margin-bottom:12px;}
+    .options{
+      display:grid;
+      grid-template-columns:repeat(2,1fr);
+      gap:10px;
+    }
+    button.opt{
+      padding:12px;
+      border-radius:8px;
+      border:1px solid rgba(20,30,60,0.06);
+      background:#fff;
+      cursor:pointer;
+      font-size:15px;
+      text-align:left;
+      box-shadow:0 2px 6px rgba(10,20,40,0.03);
+      transition:transform .08s ease, box-shadow .08s;
+    }
+    button.opt:hover{transform:translateY(-3px);}
+    button.opt.correct{background:rgba(46,204,113,0.12);border-color:rgba(46,204,113,0.2);}
+    button.opt.wrong{background:rgba(231,76,60,0.08);border-color:rgba(231,76,60,0.2);}
+    .footer{display:flex;gap:8px;justify-content:space-between;align-items:center;margin-top:14px;}
+    .controls{display:flex;gap:8px;}
+    .btn{
+      padding:10px 14px;border-radius:10px;border:0;cursor:pointer;font-weight:600;
+    }
+    .btn.primary{background:var(--accent);color:#fff;}
+    .btn.ghost{background:transparent;border:1px solid rgba(20,30,60,0.06);}
+    .result{
+      padding:14px;border-radius:10px;background:#f8fafc;border:1px solid rgba(20,30,60,0.03);
+      color:var(--muted);font-weight:600;
+    }
+    .small{font-size:13px;color:var(--muted);}
+    footer.note{margin-top:12px;text-align:center;color:var(--muted);font-size:13px;}
+    @media(max-width:480px){
+      .word{font-size:28px;}
+      .options{grid-template-columns:1fr;}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap" role="application" aria-label="英文選中文遊戲">
+    <div class="top-row">
+      <div>
+        <h1>英文選中文 — 名詞 (Nouns)</h1>
+        <p class="desc">看英文選出正確的中文意思。答對會記分，結束可重新開始。</p>
+      </div>
+      <div class="score" id="score">分數：0 / 0</div>
+    </div>
 
-# 題庫：英文 -> 中文
-words = {
-    "volume": "體積；容量",
-    "project": "計畫；專案",
-    "cereal": "穀物；麥片",
-    "insurance": "保險",
-    "course": "課程",
-    "account": "帳戶；報告",
-    "monument": "紀念碑",
-    "jail": "監獄",
-    "fable": "寓言",
-    "glacier": "冰河",
-    "description": "描述",
-    "operation": "操作；運作",
-    "executive": "主管",
-    "category": "類別",
-    "excerpt": "摘錄"
-}
+    <div class="card" id="card">
+      <div class="word" id="english">--</div>
+      <div class="hint small" id="progress">題目 0 / 0</div>
+      <div class="options" id="options" role="list"></div>
+    </div>
 
-def play_game():
-    print("🎮 英文選中文小遊戲（名詞篇） 🎮")
-    score = 0
-    questions = random.sample(list(words.items()), len(words))  # 打亂題目順序
+    <div class="footer">
+      <div class="controls">
+        <button class="btn primary" id="nextBtn">開始遊戲</button>
+        <button class="btn ghost" id="restartBtn">重新開始</button>
+      </div>
+      <div class="result" id="status">準備好了就按「開始遊戲」。</div>
+    </div>
 
-    for eng, correct_ch in questions:
-        # 建立選項
-        options = [correct_ch]
-        wrong = random.sample(list(words.values()), 3)
-        for w in wrong:
-            if w not in options:
-                options.append(w)
-        random.shuffle(options)
+    <footer class="note">單字來源：volume, project, cereal, insurance, course, account, monument, jail, fable, glacier, description, operation, executive, category, excerpt</footer>
+  </div>
 
-        # 題目
-        print(f"\n英文單字：{eng}")
-        for i, opt in enumerate(options, 1):
-            print(f"{i}. {opt}")
+  <script>
+    // 題庫（英文 -> 中文）：全部為名詞
+    const WORDS = [
+      {eng:"volume", zh:"體積；容量"},
+      {eng:"project", zh:"計畫；專案"},
+      {eng:"cereal", zh:"穀物；麥片"},
+      {eng:"insurance", zh:"保險"},
+      {eng:"course", zh:"課程"},
+      {eng:"account", zh:"帳戶；報告"},
+      {eng:"monument", zh:"紀念碑"},
+      {eng:"jail", zh:"監獄"},
+      {eng:"fable", zh:"寓言"},
+      {eng:"glacier", zh:"冰河"},
+      {eng:"description", zh:"描述"},
+      {eng:"operation", zh:"操作；運作"},
+      {eng:"executive", zh:"主管"},
+      {eng:"category", zh:"類別"},
+      {eng:"excerpt", zh:"摘錄"}
+    ];
 
-        # 玩家回答
-        try:
-            choice = int(input("請輸入選項號碼："))
-            if options[choice - 1] == correct_ch:
-                print("✅ 答對了！")
-                score += 1
-            else:
-                print(f"❌ 錯誤，正確答案是：{correct_ch}")
-        except:
-            print(f"⚠️ 輸入錯誤，正確答案是：{correct_ch}")
+    // DOM
+    const englishEl = document.getElementById('english');
+    const optionsEl = document.getElementById('options');
+    const scoreEl = document.getElementById('score');
+    const progressEl = document.getElementById('progress');
+    const statusEl = document.getElementById('status');
+    const nextBtn = document.getElementById('nextBtn');
+    const restartBtn = document.getElementById('restartBtn');
 
-    print(f"\n🎉 遊戲結束！你的得分是 {score}/{len(words)}")
+    // 遊戲狀態
+    let questions = [];
+    let currentIndex = -1;
+    let score = 0;
+    let answered = false;
 
-if __name__ == "__main__":
-    play_game()
+    function shuffle(arr){
+      for(let i=arr.length-1;i>0;i--){
+        const j = Math.floor(Math.random()*(i+1));
+        [arr[i],arr[j]] = [arr[j],arr[i]];
+      }
+      return arr;
+    }
+
+    function prepareQuestions(){
+      // 深拷貝並打亂順序
+      questions = shuffle(WORDS.slice());
+      currentIndex = -1;
+      score = 0;
+      updateScore();
+      statusEl.textContent = '遊戲已就緒，按「開始遊戲」開始。';
+    }
+
+    function updateScore(){
+      scoreEl.textContent = `分數：${score} / ${questions.length}`;
+    }
+
+    function renderNext(){
+      if(currentIndex + 1 >= questions.length){
+        // 全部答完
+        englishEl.textContent = '遊戲結束 🎉';
+        optionsEl.innerHTML = '';
+        progressEl.textContent = `題目 ${questions.length} / ${questions.length}`;
+        statusEl.textContent = `完成！你的得分： ${score} / ${questions.length}`;
+        nextBtn.textContent = '再次遊玩';
+        answered = true;
+        return;
+      }
+      currentIndex++;
+      answered = false;
+      const q = questions[currentIndex];
+      englishEl.textContent = q.eng;
+      progressEl.textContent = `題目 ${currentIndex+1} / ${questions.length}`;
+      statusEl.textContent = '請選出正確的中文意思。';
+
+      // 建 options：正確 + 3 個錯誤 (不重複)
+      const pool = WORDS.map(w=>w.zh).filter(z=>z !== q.zh);
+      const wrongs = shuffle(pool).slice(0,3);
+      const opts = shuffle([q.zh, ...wrongs]);
+
+      optionsEl.innerHTML = '';
+      opts.forEach(optText=>{
+        const btn = document.createElement('button');
+        btn.className = 'opt';
+        btn.type = 'button';
+        btn.innerText = optText;
+        btn.onclick = () => handleAnswer(btn, optText === q.zh);
+        optionsEl.appendChild(btn);
+      });
+
+      nextBtn.textContent = '跳到下一題';
+    }
+
+    function handleAnswer(button, isCorrect){
+      if(answered) return; // 防止重複點擊
+      answered = true;
+      // 標示所有選項：正確為綠，誤選為紅
+      const btns = Array.from(optionsEl.querySelectorAll('button.opt'));
+      btns.forEach(b=>{
+        if(b.innerText === questions[currentIndex].zh){
+          b.classList.add('correct');
+        }
+      });
+      if(isCorrect){
+        button.classList.add('correct');
+        score++;
+        statusEl.textContent = '答對！✅';
+      } else {
+        button.classList.add('wrong');
+        statusEl.textContent = `答錯… 正確答案：${questions[currentIndex].zh}`;
+      }
+      updateScore();
+    }
+
+    // 按鈕事件
+    nextBtn.addEventListener('click', () => {
+      // 如果還沒開始（questions 長度為 0 或 currentIndex === -1），先準備
+      if(questions.length === 0 || nextBtn.textContent === '開始遊戲'){
+        prepareQuestions();
+        renderNext();
+        return;
+      }
+      // 如果已經在進行且尚未回答，按下一題視為跳過（視同錯誤但不加分）
+      if(!answered){
+        statusEl.textContent = `已跳過，正確答案：${questions[currentIndex].zh}`;
+        // 顯示正確解答樣式
+        const btns = Array.from(optionsEl.querySelectorAll('button.opt'));
+        btns.forEach(b=>{
+          if(b.innerText === questions[currentIndex].zh) b.classList.add('correct');
+        });
+        answered = true;
+      } else {
+        renderNext();
+      }
+    });
+
+    restartBtn.addEventListener('click', () => {
+      prepareQuestions();
+      renderNext();
+    });
+
+    // 初始：準備好題庫但不自動開始（按開始後才出題）
+    prepareQuestions();
+  </script>
+</body>
+</html>
